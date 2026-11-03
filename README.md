@@ -47,18 +47,66 @@ that only uses pay-per-use services with tiny volumes: S3, Glue Data Catalog, At
 
 Architecture decisions are recorded as ADRs in [`docs/adr/`](docs/adr/).
 
+## Collector
+
+A small Python service ([`collector/`](collector/)) that takes one snapshot of every bus position
+per minute and lands it untouched in the raw zone.
+
+- **Session handling:** logs in with `POST /Login/Autenticar` and reuses the session cookie. Sessions
+  expire silently, so a `401` on a data call triggers one re-login.
+- **Fixed-rate schedule:** snapshots stay 60 s apart however long a request takes; ticks missed
+  during a long outage are skipped instead of fired in a burst.
+- **Retries:** timeouts, connection errors, `429`, `5xx` and non-JSON bodies are retried with
+  exponential backoff and jitter. After the last attempt the snapshot is skipped and the loop carries
+  on. A rejected token stops the service, since retrying cannot fix it.
+- **Raw landing:** the response body is stored byte for byte, gzipped, at
+  `posicao/dt=YYYY-MM-DD/hour=HH/posicao_<UTC timestamp>.json.gz`, partitioned by UTC collection
+  time. Files are written under a dot-prefixed temporary name and then renamed, so Spark never reads
+  a partial file.
+- **Logs:** one JSON object per line on stdout. The token travels in the login query string, so
+  request URLs are kept out of logs and error messages.
+
+API quirks found while building it, each handled in [`collector/client.py`](collector/client.py):
+
+- A rejected token returns `200` with a JSON `false`, not `401`.
+- A login request without a body gets `411 Length Required`.
+- Cloudflare in front of the API rejects Python's default `urllib` User-Agent
+  (`403 error code: 1010`), so the client sends its own.
+
 ## Running locally
 
-Requirements: [uv](https://docs.astral.sh/uv/) and `make` (Linux, macOS or WSL2).
-Docker and Java are added as the pipeline phases land.
+Requirements: Docker with Compose, [uv](https://docs.astral.sh/uv/) and `make` (Linux, macOS or
+WSL2).
+
+1. Get a free API token in the [SPTrans developer area](https://www.sptrans.com.br/desenvolvedores/):
+   create an account, then an application under "Meus Aplicativos".
+2. Configure and start the stack:
 
 ```bash
-uv sync          # create .venv with the pinned Python and dev tools
-cp .env.example .env
-make check       # lint + tests
+cp .env.example .env   # then set SPTRANS_API_TOKEN
+make up                # build and start the collector
+make logs              # one JSON line per snapshot
 ```
 
-Run `make help` to list every target.
+Snapshots land in `data/raw/posicao/dt=YYYY-MM-DD/hour=HH/`; `make down` stops everything.
+For development, `make install` creates the virtualenv and `make check` runs lint and tests.
+`make help` lists every target.
+
+### Configuration
+
+Settings are resolved from, highest precedence first: the process environment, `.env` (secrets,
+git-ignored) and `config/<ENV>.env` (non-secret settings per environment, committed).
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `ENV` | `local` | Selects `config/<ENV>.env` (`local` or `aws`). |
+| `SPTRANS_API_TOKEN` | — | Olho Vivo API token. Secret: `.env` only. |
+| `SPTRANS_API_BASE_URL` | config file | `https://api.olhovivo.sptrans.com.br/v2.1` |
+| `COLLECTOR_RAW_DIR` | config file | Raw landing directory (`/data/raw` inside Docker). |
+| `COLLECTOR_POLL_INTERVAL_SECONDS` | `60` | Time between snapshots. |
+| `COLLECTOR_REQUEST_TIMEOUT_SECONDS` | `20` | Per-request HTTP timeout. |
+| `COLLECTOR_MAX_ATTEMPTS` | `5` | Attempts per snapshot before waiting for the next tick. |
+| `COLLECTOR_LOG_LEVEL` | `INFO` | `DEBUG`, `INFO`, `WARNING` or `ERROR`. |
 
 ## Running on AWS
 
@@ -92,7 +140,7 @@ docs/             Diagrams and ADRs
 
 ## Roadmap
 
-- [ ] **Phase 0 — Setup:** repository, uv, ruff, pytest, Makefile, CI
+- [x] **Phase 0 — Setup:** repository, uv, ruff, pytest, Makefile, CI
 - [ ] **Phase 1 — Collector:** authentication, 60 s polling, retry with backoff, partitioned JSON.gz
 - [ ] **Phase 2 — Bronze:** raw → Iceberg
 - [ ] **Phase 3 — Silver:** cleaning, deduplication, speed, GTFS enrichment
