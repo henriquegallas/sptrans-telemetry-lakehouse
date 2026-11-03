@@ -17,3 +17,9 @@ updates:
     groups:
       python:
         patterns: ["*"]
+
+  - package-ecosystem: docker
+    directory: /docker/collector
+    target-branch: development
+    schedule:
+      interval: monthly
