@@ -1,0 +1,20 @@
+name: sptrans-lakehouse
+
+services:
+  collector:
+    build:
+      context: .
+      dockerfile: docker/collector/Dockerfile
+    image: sptrans-lakehouse/collector:local
+    env_file:
+      - path: config/${ENV:-local}.env
+      - path: .env
+    environment:
+      ENV: ${ENV:-local}
+      COLLECTOR_RAW_DIR: /data/raw
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+    volumes:
+      - ./data:/data
+    restart: unless-stopped
+    # Room for an in-flight request plus a retry before Docker sends SIGKILL.
+    stop_grace_period: 30s
