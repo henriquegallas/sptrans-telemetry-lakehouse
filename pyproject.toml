@@ -9,6 +9,15 @@ license-files = ["LICENSE"]
 authors = [{ name = "Henrique Gallas da Rosa" }]
 dependencies = []
 
+[project.optional-dependencies]
+collector = [
+    "httpx>=0.28.1",
+    "pydantic-settings>=2.16.2",
+    "python-dotenv>=1.2.4",
+    "structlog>=26.1.0",
+    "tenacity>=9.2.1",
+]
+
 [dependency-groups]
 dev = [
     "pytest>=9.2.0",
@@ -48,5 +57,5 @@ known-first-party = ["collector", "spark_jobs", "quality"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = ["-ra", "--strict-markers", "--strict-config"]
+addopts = ["-ra", "--strict-markers", "--strict-config", "--import-mode=importlib"]
 xfail_strict = true
