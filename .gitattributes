@@ -1,0 +1,8 @@
+# Keep LF everywhere: Makefile, shell scripts and Dockerfiles run inside Linux containers/WSL
+# even when the repo is checked out on Windows.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.gz binary
+*.zip binary
