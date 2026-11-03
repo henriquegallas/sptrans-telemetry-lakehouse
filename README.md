@@ -106,5 +106,9 @@ docs/             Diagrams and ADRs
 ## Development workflow
 
 Branches follow `feature/<name>` off `development`; commits follow
-[Conventional Commits](https://www.conventionalcommits.org/). `make check` must pass before every
-commit.
+[Conventional Commits](https://www.conventionalcommits.org/). `make check` (lint + tests) must pass
+before every commit; CI runs the same Makefile targets, so a green `make check` means a green build.
+
+## License
+
+[MIT](LICENSE)
