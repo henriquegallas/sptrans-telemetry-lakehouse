@@ -1,0 +1,15 @@
+# Secrets never go into an image; compose injects them at runtime.
+.env
+.env.*
+
+.git
+.github
+.venv
+data
+logs
+docs
+infra
+tests
+**/__pycache__
+.pytest_cache
+.ruff_cache
