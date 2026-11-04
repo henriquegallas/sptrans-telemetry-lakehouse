@@ -15,11 +15,12 @@ BASE_URL = "https://api.olhovivo.test/v2.1"
 
 
 def _vehicle(prefix: int, accessible: bool, ts: str, lat: float, lon: float) -> dict[str, Any]:
-    return {"p": prefix, "a": accessible, "ta": ts, "py": lat, "px": lon}
+    # `sv` and `is` are undocumented and have been null in every real snapshot seen so far.
+    return {"p": prefix, "a": accessible, "ta": ts, "py": lat, "px": lon, "sv": None, "is": None}
 
 
 def positions_payload() -> dict[str, Any]:
-    """Two lines and three vehicles, in the shape documented for GET /Posicao (v2.1)."""
+    """Two lines and three vehicles, shaped like a real GET /Posicao (v2.1) response."""
     return {
         "hr": "22:31",
         "l": [
