@@ -23,6 +23,7 @@ which is in UTC. The payload's own `hr` field is São Paulo local time as `HH:MM
 - An hourly run maps to exactly one `dt`/`hour` prefix, so idempotent reprocessing is a matter of
   overwriting that hour's bronze partition.
 - Hadoop-based readers skip dot-files, so Spark never sees a partially written snapshot.
-- One file per minute means ~1,440 small files a day. That is fine at this volume; bronze compacts
-  them into Iceberg files, and a lifecycle rule can expire raw objects on S3.
+- One file per minute means ~1,440 files a day of ~200 KB each (~290 MB/day). That is fine at
+  this volume; bronze compacts them into Iceberg files, and a lifecycle rule can expire raw objects
+  on S3.
 - Local-time reporting (rush hours) is a presentation concern handled in gold or at query time.

@@ -50,7 +50,9 @@ Architecture decisions are recorded as ADRs in [`docs/adr/`](docs/adr/).
 ## Collector
 
 A small Python service ([`collector/`](collector/)) that takes one snapshot of every bus position
-per minute and lands it untouched in the raw zone.
+per minute and lands it untouched in the raw zone. A weekday-afternoon snapshot holds ~9,500
+vehicles on ~2,000 line/direction pairs: 1.2 MB of JSON, ~200 KB gzipped, so roughly 290 MB of raw
+data a day.
 
 - **Session handling:** logs in with `POST /Login/Autenticar` and reuses the session cookie. Sessions
   expire silently, so a `401` on a data call triggers one re-login.
@@ -72,6 +74,10 @@ API quirks found while building it, each handled in [`collector/client.py`](coll
 - A login request without a body gets `411 Length Required`.
 - Cloudflare in front of the API rejects Python's default `urllib` User-Agent
   (`403 error code: 1010`), so the client sends its own.
+- A newly issued token can be shown as active in the developer portal and still be rejected for
+  hours; ours started working about 20 hours after it was created.
+- Vehicles carry two undocumented fields, `sv` and `is`, which have been `null` in every snapshot
+  so far.
 
 ## Running locally
 
@@ -141,7 +147,7 @@ docs/             Diagrams and ADRs
 ## Roadmap
 
 - [x] **Phase 0 — Setup:** repository, uv, ruff, pytest, Makefile, CI
-- [ ] **Phase 1 — Collector:** authentication, 60 s polling, retry with backoff, partitioned JSON.gz
+- [x] **Phase 1 — Collector:** authentication, 60 s polling, retry with backoff, partitioned JSON.gz
 - [ ] **Phase 2 — Bronze:** raw → Iceberg
 - [ ] **Phase 3 — Silver:** cleaning, deduplication, speed, GTFS enrichment
 - [ ] **Phase 4 — Gold:** hourly metrics tables
